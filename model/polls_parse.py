@@ -18,7 +18,19 @@ def notefv(tr):
     t=tr.get_text(' ',strip=True)
     return None
 rows=[]
-for k,cols in ((0,C0),(1,C1),(2,C2)):
+HMAP={'Polling firm/Commissioner':'firm','Fieldwork date':'date','Sample size':'n','Turnout':'turnout','CCa':'CC','Adelante Andalucía':'AA',
+      'Se Acabó La Fiesta':'SALF','Aliança.cat':'AC','Lead':'lead'}
+def header(tb):
+    out=[]
+    for th in tb.find_all('tr')[0].find_all('th'):
+        a=th.find('a'); name=(a.get('title') if a else th.get_text(strip=True))
+        for _ in range(int(th.get('colspan',1))): out.append(HMAP.get(name,name))
+    return out
+# Las columnas se leen de la cabecera de cada tabla: Wikipedia añade o quita partidos según el periodo
+TABLES=[(k,header(T[k])) for k in (0,1,2)]
+for k,cols in TABLES:
+    assert cols[:4]==['firm','date','n','turnout'] and cols[-1]=='lead' and 'PP' in cols, ('Estructura de tabla inesperada',k,cols)
+for k,cols in TABLES:
     for tr in T[k].find_all('tr')[1:]:
         txt=[];cid=[]
         for ci,td in enumerate(tr.find_all(['td','th'])):
@@ -26,14 +38,14 @@ for k,cols in ((0,C0),(1,C1),(2,C2)):
         if len(txt)!=len(cols): continue
         d=dict(zip(cols,txt)); d['table']=k
         # FA y Compromís en una sola celda (lista conjunta): FA lleva el total y FV queda vacío
-        comb=k==0 and cid[cols.index('FA')]==cid[cols.index('FV')]
+        comb='FA' in cols and 'FV' in cols and cid[cols.index('FA')]==cid[cols.index('FV')]
         if comb: d['FV']=''
         d['FAFV_comb']=comb
         for c in cols[4:-1]: d[c]=first(d[c])
         # nota Compromís separada dentro de Sumar
         m=re.search(r'Compromís , with ([\d.]+)%',' '.join(
             soup.find(id=a['href'].split('#')[-1]).get_text(' ',strip=True) for a in tr.select('sup a[href*=cite_note]') if soup.find(id=a['href'].split('#')[-1])))
-        if m and k==1: d['FV_note']=float(m.group(1))
+        if m and 'Sumar' in cols: d['FV_note']=float(m.group(1))
         rows.append(d)
 df=pd.DataFrame(rows)
 df['firm']=df.firm.str.replace(r'\s*\[.*?\]','',regex=True).str.strip()

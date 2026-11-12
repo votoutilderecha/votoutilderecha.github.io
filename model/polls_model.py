@@ -13,7 +13,10 @@ PARTY_FIRMS={'PSOE','PP','Vox','Sumar','Podemos','SocioMétrica/PP'}
 
 def load_polls():
     P=pd.read_csv(os.path.join(ROOT,'data','polls_2026.csv'),parse_dates=['end'])
-    P=P[P.PP.notna()&P.end.notna()&~P.firm.isin(PARTY_FIRMS)].copy()
+    # fuera las encuestas encargadas o publicadas por partidos (p. ej. «Vox/The Objective», «SocioMétrica/PP»)
+    PARTIES={'PSOE','PP','Vox','Sumar','Podemos','SALF','ERC','Junts','PNV','EH Bildu','BNG','CC','UPN','Compromís','Más Madrid','IU'}
+    party=P.firm.fillna('').map(lambda f:f in PARTY_FIRMS or any(x.strip() in PARTIES for x in f.split('/')))
+    P=P[P.PP.notna()&P.end.notna()&~party].copy()
     comb=P.get('FAFV_comb',pd.Series(False,index=P.index)).fillna(False).astype(bool)
     # FA+FV como "espacio Sumar" en todas las encuestas
     P['SUMESP']=np.where(P.table==0,np.where(comb,P.FA,P.FA+P.FV),P.Sumar)
