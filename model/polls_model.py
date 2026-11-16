@@ -49,6 +49,25 @@ def aggregate(P,asof):
     return dict(date=str(asof.date()),window_days=WINDOW,half_life=HALF,n_polls=int(len(d0)),firms=d0.firm.tolist(),
                 last_poll=str(d0.end.max().date()) if len(d0) else None,post=out)
 
+HOUSE_CORRECT={'CIS'}  # casas con sesgo sistemático corregido (ver house_correct)
+def house_correct(P,firms=HOUSE_CORRECT,days=365):
+    """Corrige el efecto casa de las reestimaciones de datos del CIS: a cada encuesta se le resta la desviación media
+    de esa casa frente a la media del resto de encuestas en sus publicaciones de los 12 meses anteriores
+    (sin incluirse a sí misma, para no corregir con su propio dato)."""
+    P=P.copy(); keys=[k for k in PRIOR if k in P]
+    for firm in firms:
+        F=P[P.firm==firm].sort_values('end'); O=P[P.firm!=firm]
+        dev={}
+        for i,r in F.iterrows():
+            a=aggregate(O,r.end)['post']; dev[i]={k:(r[k]-a[k]['mean']) for k in keys if pd.notna(r[k])}
+        for i,r in F.iterrows():
+            prev=[j for j in F.index if F.at[j,'end']<r.end and F.at[j,'end']>=r.end-pd.Timedelta(days=days)]
+            if len(prev)<3: continue
+            for k in keys:
+                v=[dev[j][k] for j in prev if k in dev[j]]
+                if len(v)>=3 and pd.notna(r[k]): P.at[i,k]=max(r[k]-sum(v)/len(v),0.1)
+    return P
+
 def means(post,b):
     """Media nacional por candidatura real del 29-N (UPN con PP, Podemos dentro de ERC/Compromís/UPC, etc.)."""
     po=post
@@ -65,7 +84,7 @@ def means(post,b):
     return m
 
 if __name__=='__main__':
-    P=load_polls()
+    P=house_correct(load_polls())
     asof=sys.argv[1] if len(sys.argv)>1 else str(P.end.max().date())
     r=aggregate(P,asof)
     print(r['date'],r['n_polls'],'encuestas'); print(pd.DataFrame(r['post']).T.to_string())

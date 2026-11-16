@@ -6,11 +6,11 @@ para el 29-N (más de 90 días: el valor a 90). Escribe data/timeseries.json.
 import os, json, subprocess, sys
 import pandas as pd, numpy as np
 sys.path.insert(0,os.path.dirname(os.path.abspath(__file__)))
-from polls_model import load_polls, aggregate, means, ROOT
+from polls_model import load_polls, aggregate, means, house_correct, ROOT
 ELECTION=pd.Timestamp('2026-11-29')
 HZ=[(3,2.19),(7,2.25),(14,2.23),(21,2.31),(30,2.90),(45,2.88),(60,4.03),(90,4.80)]
 def err_pts(days): return float(np.interp(min(days,90),[h for h,_ in HZ],[e for _,e in HZ]))
-P=load_polls(); b=json.load(open(os.path.join(ROOT,'data','base.json')))
+P=house_correct(load_polls()); b=json.load(open(os.path.join(ROOT,'data','base.json')))
 last=P.end.max()
 dates=list(pd.date_range('2026-01-04',last,freq='W-SUN'))
 if dates[-1]!=last: dates.append(last)

@@ -16,8 +16,8 @@ tsf=os.path.join(ROOT,'data','timeseries.json'); ts=json.load(open(tsf)) if os.p
 
 # --- puntos de encuestas individuales para la sección de evolución (mismas transformaciones que la media) ---
 def poll_points(b,ts):
-    from polls_model import load_polls
-    P=load_polls(); P=P[P.end>=pd.Timestamp('2026-01-01')]
+    from polls_model import load_polls, house_correct
+    P=house_correct(load_polls()); P=P[P.end>=pd.Timestamp('2026-01-01')]
     tw=[(pd.Timestamp(w['date']),w) for w in ts['weeks']] if ts else []
     def wk(d):
         return min(tw,key=lambda x:abs((x[0]-d).days))[1] if tw else None
