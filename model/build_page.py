@@ -39,13 +39,13 @@ def poll_points(b,ts):
             fa=se-fvv+b['nc_nat']*100
             v['FA']=fa*(1-fr.get(('FA','FV'),0)-fr.get(('FA','Otros'),0))+(pod or 0)*fr.get(('Podemos','FA'),0)
             if fv is not None: v['FV']=fv+fa*fr.get(('FA','FV'),0)+(pod or 0)*fr.get(('Podemos','FV'),0)
-        w=wk(r.end)
+        w=wk(r.mid)
         def bloc(keys):
             if not all(k in v for k in keys[:2]): return None
             return round(sum(v.get(k, w['parties'][k]['vote'] if w and k in w['parties'] else 0) for k in keys),2)
         bl={'R':bloc(['PP','Vox','SALF']),'L':bloc(['PSOE','FA','FV','Podemos'])}
         if bl['R'] is not None and bl['L'] is not None: bl['O']=None
-        out.append(dict(d=str(r.end.date()),f=r.firm,v={k:round(x,2) for k,x in v.items()},b={k:x for k,x in bl.items() if x is not None}))
+        out.append(dict(d=str(r.mid.date()),f=r.firm,v={k:round(x,2) for k,x in v.items()},b={k:x for k,x in bl.items() if x is not None}))
     return out
 pts=poll_points(b,ts)
 print({k:v['mean'] for k,v in m.items()})

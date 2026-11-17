@@ -11,6 +11,18 @@ PRIOR={'PP':33.1,'PSOE':31.7,'Vox':12.4,'SUMESP':7.5,'Podemos':3.3,'SALF':2.0,'E
        'BNG':0.6,'CC':0.5,'UPN':0.2,'AA':0.5,'AC':0.6,'FVobs':1.0}
 PARTY_FIRMS={'PSOE','PP','Vox','Sumar','Podemos','SocioMétrica/PP'}
 
+MON={m:i+1 for i,m in enumerate('Jan Feb Mar Apr May Jun Jul Aug Sep Oct Nov Dec'.split())}
+def start_date(txt,end):
+    """Primer día de campo a partir de textos como «26 Oct–15 Nov», «10–15 Nov», «12 Nov» o «27 Dec–3 Jan»."""
+    import re
+    if pd.isna(end): return pd.NaT
+    a=str(txt).split('–')[0].strip()
+    m=re.match(r'(\d+)(?:\s+([A-Z][a-z]{2}))?',a)
+    if not m: return end
+    mon=MON.get(m.group(2),end.month) if m.group(2) else end.month
+    d=pd.Timestamp(end.year,mon,int(m.group(1)))
+    if d>end: d=pd.Timestamp(end.year-1,mon,int(m.group(1)))
+    return d
 def load_polls():
     P=pd.read_csv(os.path.join(ROOT,'data','polls_2026.csv'),parse_dates=['end'])
     # fuera las encuestas encargadas o publicadas por partidos (p. ej. «Vox/The Objective», «SocioMétrica/PP»)
@@ -19,6 +31,9 @@ def load_polls():
     P=P[P.PP.notna()&P.end.notna()&~party].copy()
     # el CIS publica con distintas empresas de campo: cuenta como una sola casa
     P['firm']=P.firm.where(~P.firm.str.startswith('CIS'),'CIS')
+    # fecha efectiva = punto medio del trabajo de campo (los trackings acumulados no son «de hoy»)
+    P['start']=[start_date(t,e) for t,e in zip(P.date,P.end)]
+    P['mid']=P.start+(P.end-P.start)/2
     comb=P.get('FAFV_comb',pd.Series(False,index=P.index)).fillna(False).astype(bool)
     # FA+FV como "espacio Sumar" en todas las encuestas
     P['SUMESP']=np.where(P.table==0,np.where(comb,P.FA,P.FA+P.FV),P.Sumar)
@@ -27,11 +42,12 @@ def load_polls():
 
 def aggregate(P,asof):
     asof=pd.Timestamp(asof)
-    d0=P[(P.end<=asof)&(P.end>=asof-pd.Timedelta(days=WINDOW))].copy()
-    # una encuesta por empresa (la más reciente) para no sobreponderar trackers
+    d0=P[(P.end<=asof)&(P.mid>=asof-pd.Timedelta(days=WINDOW))].copy()
+    # una encuesta por empresa (la última publicada) para no contar varias veces las mismas entrevistas de un tracking
     d0=d0.sort_values('end',ascending=False).drop_duplicates('firm')
     d0['n']=d0.n.fillna(1000).clip(upper=3000)
-    d0['w']=0.5**((asof-d0.end).dt.days/HALF)
+    # antigüedad medida desde el punto medio del trabajo de campo
+    d0['w']=0.5**(((asof-d0.mid).dt.total_seconds()/86400).clip(lower=0)/HALF)
     out={}
     for p,m0 in PRIOR.items():
         d=d0[d0[p].notna()] if p in d0 else d0.iloc[:0]
