@@ -1,4 +1,4 @@
-"""Serie semanal: media de encuestas y simulación nacional a cada domingo (sin análisis provincial ni de voto útil).
+"""Serie temporal: media de encuestas y simulación nacional cada domingo (y cada día desde el 26 de octubre) (sin análisis provincial ni de voto útil).
 
 El error del día de la elección de cada semana sale de la curva histórica según los días que faltaban
 para el 29-N (más de 90 días: el valor a 90). Escribe data/timeseries.json.
@@ -13,7 +13,8 @@ HZ=[(3,2.19),(7,2.25),(14,2.23),(21,2.31),(30,2.90),(45,2.88),(60,4.03),(90,4.80
 def err_pts(days): return float(np.interp(min(days,90),[h for h,_ in HZ],[e for _,e in HZ]))
 P=house_correct(load_polls()); b=json.load(open(os.path.join(ROOT,'data','base.json')))
 last=P.end.max()
-dates=list(pd.date_range('2026-01-04',last,freq='W-SUN'))
+# semanal (domingos) hasta el 25 de octubre y diaria desde entonces, para ver noviembre con detalle
+dates=list(pd.date_range('2026-01-04','2026-10-25',freq='W-SUN'))+list(pd.date_range('2026-10-26',last,freq='D'))
 if dates[-1]!=last: dates.append(last)
 weeks=[]
 for d in dates:
