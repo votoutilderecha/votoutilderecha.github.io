@@ -7,6 +7,8 @@ import sys, pandas as pd, numpy as np
 sys.path.insert(0,os.path.dirname(os.path.abspath(__file__)))
 from polls_model import means
 m=means(p['post'],b)
+import regional
+b_reg,reg_log=regional.adjust(b,m,p['date'])
 MESES='enero febrero marzo abril mayo junio julio agosto septiembre octubre noviembre diciembre'.split()
 fes=lambda d:f"{d.day} de {MESES[d.month-1]} de {d.year}"
 last=pd.Timestamp(p['last_poll']); asof=pd.Timestamp(p['date']); days=int((pd.Timestamp('2026-11-29')-last).days)
@@ -49,7 +51,7 @@ def poll_points(b,ts):
     return out
 pts=poll_points(b,ts)
 print({k:v['mean'] for k,v in m.items()})
-D={'means':m,'parties':b['parties'],'provinces':b['provinces'],'assumptions':b['assumptions'],'post':p['post'],
+D={'means':m,'parties':b['parties'],'provinces':b_reg['provinces'],'regional':[dict(ccaa=e['ccaa'],polls=e['polls']) for e in reg_log],'assumptions':b['assumptions'],'post':p['post'],
    'meta':{'poll_date':fes(last),'window_from':fes(asof-pd.Timedelta(days=p['window_days'])),'half_life':p['half_life'],'n_polls':p['n_polls'],'firms':p['firms'],'built':fes(pd.Timestamp.now()),'poll_days':days,'err_default':err},'ts':ts,'pts':pts}
 s=open(os.path.join(ROOT,'model','template.html')).read().replace('__DATA__',json.dumps(D,ensure_ascii=False).replace('</','<\\/'))
 HEAD='''<!doctype html>

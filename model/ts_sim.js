@@ -7,7 +7,8 @@ const q=(a,p)=>{const s=Array.from(a).sort((x,y)=>x-y);return s[Math.min(s.lengt
 const iPP=P.indexOf('PP'),iPS=P.indexOf('PSOE');
 const out=I.weeks.map(w=>{let mu=P.map(p=>p==='Otros'?0:w.means[p].mean);mu[P.indexOf('Otros')]=Math.max(100-mu.reduce((a,b)=>a+b,0),0.5);const t=mu.reduce((a,b)=>a+b,0);mu=mu.map(x=>x/t);
   const sd=P.map(p=>p==='Otros'?0.003:w.means[p].sd/100);
-  const R=E.simulate(M,{N,mu,sd,unc:w.err/2.2,delta:0.01,seed:17});
+  const Mw=w.provinces?E.setup({parties:P,provinces:w.provinces}):M;
+  const R=E.simulate(Mw,{N,mu,sd,unc:w.err/2.2,delta:0.01,seed:17});
   const parties={};P.forEach((p,j)=>{if(p==='Otros')return;parties[p]={vote:+(mu[j]*100).toFixed(2),med:q(R.natSeats[j],.5),lo:q(R.natSeats[j],.05),hi:q(R.natSeats[j],.95)}});
   const bs={R:new Int32Array(N),L:new Int32Array(N),O:new Int32Array(N)};for(let j=0;j<NP;j++){const k=R.RIGHT[j]?'R':R.LEFT[j]?'L':'O';for(let n=0;n<N;n++)bs[k][n]+=R.natSeats[j][n]}
   const blocs={};for(const k of ['R','L','O']){const v=k==='R'?R.voteR:k==='L'?R.voteL:R.voteO;let maj=0;for(let n=0;n<N;n++)if(bs[k][n]>=176)maj++;
